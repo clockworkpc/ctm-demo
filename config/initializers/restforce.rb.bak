@@ -1,0 +1,13 @@
+require 'restforce'
+require 'faraday'
+
+Rails.application.config.salesforce_client = Restforce.new(
+  username: Rails.application.credentials[:sf_username],
+  password: Rails.application.credentials[:sf_password],
+  security_token: Rails.application.credentials[:sf_security_token],
+  client_id: Rails.application.credentials[:sf_consumer_key],
+  client_secret: Rails.application.credentials[:sf_consumer_secret],
+  host: Rails.application.credentials[:sf_host]
+) do |builder|
+  builder.adapter Faraday.default_adapter # Use the default Faraday adapter
+end

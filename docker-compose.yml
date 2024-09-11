@@ -1,0 +1,66 @@
+name: ctm-demo
+
+services:
+  web:
+    build:
+      context: .             # Use the current directory as build context
+      dockerfile: Dockerfile.dev  # Use the Dockerfile in the current directory
+    container_name: ctm_web
+    command: bash -c "bundle exec rails db:create db:migrate && bundle exec rails server -b 0.0.0.0"
+    working_dir: /rails
+    volumes:
+      - .:/rails              # Mount the current directory to /rails inside the container
+    environment:
+      - RAILS_ENV=development
+      - DATABASE_URL=postgres://ctm:password123@db:5432/ctm_development
+      - REDIS_URL=redis://redis:6379/0
+      - INSIDE_DOCKER=true
+    ports:
+      - "3000:3000"           # Expose port 3000 for the Rails app
+    depends_on:
+      - db                    # Ensure the db service is running before starting the web service
+      - test_db
+      - redis                 # Ensure Redis is running before starting the web service
+    networks:
+      - ctm_network           # Use a custom network for communication
+
+  db:
+    image: postgres:latest
+    container_name: ctm_db
+    environment:
+      POSTGRES_USER: ctm
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: ctm_development
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Persist PostgreSQL data
+    networks:
+      - ctm_network
+
+  test_db:
+    image: postgres:latest
+    container_name: ctm_test_db
+    environment:
+      POSTGRES_USER: ctm
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: ctm_test
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    networks:
+      - ctm_network
+
+  redis:
+    image: redis:latest
+    container_name: ctm_redis
+    volumes:
+      - redis_data:/data  # Persist Redis data
+    networks:
+      - ctm_network
+
+networks:
+  ctm_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  postgres_test_data:
+  redis_data:
