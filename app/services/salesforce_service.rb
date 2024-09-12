@@ -3,14 +3,19 @@ require 'uri'
 require 'net/http'
 
 class SalesforceService
-  attr_reader :access_token
+  attr_reader :access_token, :client
 
   def initialize
-    @access_token = get_access_token
+    @client = Restforce.new(
+      client_id: Rails.application.credentials[:sf_consumer_key],
+      client_secret: Rails.application.credentials[:sf_consumer_secret],
+      host: Rails.application.credentials[:sf_host],
+      api_version: '61.0'
+    )
   end
 
-  def get_access_token
-    my_domain = Rails.application.credentials[:sf_instance_url_dev]
+  def request_access_token
+    my_domain = Rails.application.credentials[:sf_instance_url]
     url = URI("#{my_domain}/services/oauth2/token")
     https = Net::HTTP.new(url.host, url.port)
     https.use_ssl = true
@@ -25,47 +30,35 @@ class SalesforceService
     Rails.logger.info(e)
   end
 
+  def sobjects
+    @client.describe
+  end
+
+  def sobject_names
+    sobjects.pluck('name')
+  end
+
+  def list_users
+    @client.query('SELECT Id, Name FROM User')
+  end
+
   def list_accounts
-    @client.query('SELECT Id, Name FROM Account')
+    @client.query('Select Id, Name FROM Account')
+  end
+
+  def find_account(id: nil, name: nil)
+    if id
+      @client.find('Account', id)
+    elsif name
+      @client.query("select Id,Name from Account where Name = '#{name}'")
+    end
+  end
+
+  def create_account(name:)
+    @client.create('Account', Name: name)
+  end
+
+  def delete_account(id:)
+    @client.destroy('Account', id)
   end
 end
-
-#   def get_access_token_from_cli
-#     output = `sf org display --target-org dev`
-#   end
-# end
-
-# url = URI("https://garbersquaredllc-dev-ed.develop.my.salesforce.com/services/data/v61.0")
-#
-# https = Net::HTTP.new(url.host, url.port)
-# https.use_ssl = true
-#
-# request = Net::HTTP::Get.new(url)
-# request["Authorization"] = "Bearer 00Dak00000CC78T\\!AQEAQKI0QEntEDjlcezm62fCub7GaTwNeffUDswJZ6JXkKxJKJwOpZ1JVRYv90yDm89asA2ADUflEZzF2EvNYB.f1IwvDvbc"
-#
-# response = https.request(request)
-# puts response.read_body
-#
-# #   def initialize
-# #     # @client = Rails.application.config.salesforce_client
-# #     @client = Restforce.new(
-# #       username: Rails.application.credentials[:sf_username],
-# #       password: Rails.application.credentials[:sf_password],
-# #       instance_url: Rails.application.credentials[:sf_instance_url],
-# #       host: Rails.application.credentials[:sf_host],
-# #       client_id: Rails.application.credentials[:sf_consumer_key],
-# #       client_secret: Rails.application.credentials[:sf_consumer_secret],
-# #       api_version: '61.0'
-# #     )
-# #   end
-# #
-# #   def find_account(account_id)
-# #     @client.find('Account', account_id)
-# #   end
-# #
-# #   def create_contact(contact_params)
-# #     @client.create('Contact', contact_params)
-# #   end
-# #
-# #   # Add more methods to interact with Salesforce as needed
-# # end
